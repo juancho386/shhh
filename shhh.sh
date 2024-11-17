@@ -90,11 +90,31 @@ read_msg () {
 }
 
 sign_msg () {
-	echo not implemented yet
+	echo
+	if [[ -f shhh.private.pem ]]; then
+		read -p "Type the message: " msg
+		local signedMsg=$(openssl pkeyutl -sign -inkey shhh.private.pem <<<${msg}|base64 -w0)
+		echo Your signed message is:
+		echo $signedMsg
+		echo
+	else
+		echo "Your keys are not present. Aborting."
+	fi
 }
+
+
+
 verify_msg () {
-	echo not implemented yet
+	dests=$(find ./contacts -name "*.pem"|tr "\n" "\t")
+	pub_key_pem=$(choice "From whom is this message?: " "$dests")
+	read -p "Type the message: " msg
+	if [[ "$resp" != "" ]]; then
+		base64 -d <<< $msg | openssl pkeyutl -verifyrecover -pubin -inkey $pub_key_pem
+	fi
 }
+
+
+
 show_key () {
 	if [[ -f "contacts/myself.pem" ]]; then
 		cat contacts/myself.pem
