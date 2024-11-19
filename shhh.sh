@@ -1,4 +1,25 @@
 #!/bin/bash
+
+#requisites:
+if [[ "$1" == "-t" ]]; then
+	ENV="terminal"
+	req='openssl'
+else
+	ENV="gtk"
+	req='openssl zenity'
+fi
+
+for r in $req; do
+	which $r 2>/dev/null 1>&2
+	if [[ "$?" != "0" ]]; then
+		echo "$r not found. Aborting."
+		exit 1
+	fi
+done
+
+
+
+#starts
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $DIR
 touch ${DIR}/dummy
@@ -33,7 +54,12 @@ menu () {
 		"Create key pair"
 		"Exit"
 	)
-	resp=$(choice "Choose: " "${options[0]}	${options[1]}	${options[2]}	${options[3]}	${options[4]}	${options[5]}	${options[6]}")
+	if [[ "$ENV" == "gtk" ]]; then
+		resp=$(zenity --title="SHHH" --list --width=700 --height=350 \
+			--column=Menu "${options[0]}" "${options[1]}" "${options[2]}" "${options[3]}" "${options[4]}" "${options[5]}" "${options[6]}")
+	else
+		resp=$(choice "Choose: " "${options[0]}	${options[1]}	${options[2]}	${options[3]}	${options[4]}	${options[5]}	${options[6]}")
+	fi
 	if [[ "$resp" == "${options[0]}" ]]; then
 		write_msg
 	fi 
@@ -58,9 +84,15 @@ menu () {
 }
 
 write_msg () {
-	dests=$(find ./contacts -name "*.pem"|tr "\n" "\t")
-	pub_key_pem=$(choice "Whom: " "$dests")
-	read -p "Type the message: " msg
+	if [[ "$ENV" == "gtk" ]]; then
+		pub_key_pem=$(find ./contacts -name "*.pem"|zenity --title="SHHH" --list --text="Whom?" --width=700 --height=350 --column="Available public keys")
+		msg=$(zenity --width=500 --height=500 --title='SHHH' --text-info --editable --text='Type the message')
+	else
+		dests=$(find ./contacts -name "*.pem"|tr "\n" "\t")
+		pub_key_pem=$(choice "Whom: " "$dests") # CLI
+		read -p "Type the message: " msg
+	fi
+
 	if [[ "$resp" != "" ]]; then 
 		local password=$(openssl rand 256|tr -d '\000\a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z"') # XXX do I need |base64?
 		# echo creando pass: $password $?
@@ -69,23 +101,49 @@ write_msg () {
 		# echo decrypt test: base64 -d <<< $encriptedMsg | openssl enc -d -chacha20 -pbkdf2 -pass "pass:${password}"
 		local encryptedPassword=$(openssl pkeyutl -encrypt -pubin -inkey $pub_key_pem <<< "$password"|base64 -w0)
 		#echo enciptando pass: $?
-		echo ${encryptedPassword}:${encriptedMsg}
+		if [[ "$ENV" == "gtk" ]]; then
+			zenity --width=500 --height=500 --title='SHHH' --text-info --text='The encrypted message is'<<<${encryptedPassword}:${encriptedMsg}
+		else
+			echo "The encripted message is:"
+			echo "${encryptedPassword}:${encriptedMsg}"
+		fi
 	fi
 }
 
 
 
 read_msg () {
-	echo
 	if [[ -f shhh.private.pem ]]; then
-		read -p "Type the encrypted message: " fullMsg
+		if [[ "$ENV" == "gtk" ]]; then
+			fullMsg=$(zenity --width=500 --height=500 --title='SHHH' --text-info --editable --text='Type the encrypted message')
+		else
+			echo
+			read -p "Type the encrypted message: " fullMsg
+		fi
 		encodedPassword=$(grep -Eo "^[^:]+" <<<$fullMsg)
 		encodedMsg=$(sed -E "s/^[^:]+://g" <<< $fullMsg)
-		password=$(base64 -d <<< $encodedPassword | openssl pkeyutl -decrypt -inkey shhh.private.pem )
+		if [[ "$ENV" == "gtk" ]]; then
+			passPhrase=$(zenity --password --title="SSH: Type your passphrase" --width=600)
+			password=$(base64 -d <<< $encodedPassword | openssl pkeyutl -decrypt -passin "pass:$passPhrase" -inkey shhh.private.pem )
+		else
+			password=$(base64 -d <<< $encodedPassword | openssl pkeyutl -decrypt -inkey shhh.private.pem )
+		fi
 		msg=$(base64 -d <<< $encodedMsg | openssl enc -d -chacha20 -pbkdf2 -pass "pass:${password}")
-		echo $msg
+		if [[ "$ENV" == "gtk" ]]; then
+			zenity --width=500 --height=500 --title='SHHH'<<<$msg
+		else
+			echo
+			echo Your message is:
+			echo $msg
+			echo
+		fi
 	else
-		echo "Your keys are not present. Aborting."
+		local error='Your keys are not present. Aborting.'
+		if [[ "$ENV" == "gtk" ]]; then
+			zenity --width=500 --height=500 --title='SHHH' --info --text="$error"
+		else
+			echo $error
+		fi
 	fi
 }
 

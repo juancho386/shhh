@@ -34,7 +34,7 @@ Now the message is encrypted using Chacha20 with a self generated key which is e
 Make it prettier using Dialog. Note: Not finished because in my current Linux distribution, dialog has a bug on --editbox that doesn't allow text bigger than ~2k long
 
 ### More things to do:
-- The chacha20 password length is 256 chars. The static number might become data for hackers. Solution: Make the password length variable
+- The chacha20 password length is 256 chars. The static number might become data for hackers to discover the actual password. Solution: Make the password length variable
 - Opt the user to output a file instead o text to be copied and pasted
-- Optionally implement zenity
+- Implement zenity
 
