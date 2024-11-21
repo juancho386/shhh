@@ -22,12 +22,6 @@ done
 #starts
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $DIR
-touch ${DIR}/dummy
-
-clean_all () {
-	echo -n "" > ${DIR}/dummy
-}
-trap clean_all exit
 
 choice () {
 	local PS3="$1"
