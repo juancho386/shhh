@@ -55,8 +55,8 @@ menu () {
 		"Exit"
 	)
 	if [[ "$ENV" == "gtk" ]]; then
-		resp=$(zenity --title="SHHH" --list --width=700 --height=350 \
-			--column=Menu "${options[0]}" "${options[1]}" "${options[2]}" "${options[3]}" "${options[4]}" "${options[5]}" "${options[6]}")
+		resp=$(zenity --title="SHHH" --list --width=700 --height=350 --column=Menu \
+			"${options[0]}" "${options[1]}" "${options[2]}" "${options[3]}" "${options[4]}" "${options[5]}" "${options[6]}")
 	else
 		resp=$(choice "Choose: " "${options[0]}	${options[1]}	${options[2]}	${options[3]}	${options[4]}	${options[5]}	${options[6]}")
 	fi
@@ -130,7 +130,7 @@ read_msg () {
 		fi
 		msg=$(base64 -d <<< $encodedMsg | openssl enc -d -chacha20 -pbkdf2 -pass "pass:${password}")
 		if [[ "$ENV" == "gtk" ]]; then
-			zenity --width=500 --height=500 --title='SHHH'<<<$msg
+			zenity --text-info --width=500 --height=500 --title='SHHH'<<<$msg
 		else
 			echo
 			echo Your message is:
@@ -148,13 +148,20 @@ read_msg () {
 }
 
 sign_msg () {
-	echo
 	if [[ -f shhh.private.pem ]]; then
-		read -p "Type the message: " msg
-		local signedMsg=$(openssl pkeyutl -sign -inkey shhh.private.pem <<<${msg}|base64 -w0)
-		echo Your signed message is:
-		echo $signedMsg
-		echo
+		if [[ "$ENV" == "gtk" ]]; then
+			local msg=$(zenity --width=500 --height=500 --title='SHHH' --text-info --editable --text='Type the message to sign')
+			local passPhrase=$(zenity --password --title="SSH: Type your passphrase" --width=600)
+			local signedMsg=$(openssl pkeyutl -sign -inkey shhh.private.pem -passin "pass:${passPhrase}"<<<${msg}|base64 -w0)
+			zenity --text-info --width=500 --height=500 --title='SHHH: Type the message to sign'<<<$signedMsg
+		else
+			echo
+			read -p "Type the message to sign: " msg
+			local signedMsg=$(openssl pkeyutl -sign -inkey shhh.private.pem <<<${msg}|base64 -w0)
+			echo Your signed message is:
+			echo $signedMsg
+			echo
+		fi
 	else
 		echo "Your keys are not present. Aborting."
 	fi
@@ -163,11 +170,18 @@ sign_msg () {
 
 
 verify_msg () {
-	dests=$(find ./contacts -name "*.pem"|tr "\n" "\t")
-	pub_key_pem=$(choice "From whom is this message?: " "$dests")
-	read -p "Type the message: " msg
-	if [[ "$resp" != "" ]]; then
-		base64 -d <<< $msg | openssl pkeyutl -verifyrecover -pubin -inkey $pub_key_pem
+	if [[ "$ENV" == "gtk" ]]; then
+		pub_key_pem=$(find ./contacts -name "*.pem"|zenity --title="SHHH" --list --text="From whom is this message?" --width=700 --height=350 --column="Available public keys")
+		msg=$(zenity --width=500 --height=500 --title='SHHH' --text-info --editable --text='Type the message')
+		recoveredMsg=$(base64 -d <<< $msg | openssl pkeyutl -verifyrecover -pubin -inkey $pub_key_pem)
+		zenity --text-info --width=500 --height=500 --title='SHHH: Type the message'<<<$recoveredMsg
+	else
+		dests=$(find ./contacts -name "*.pem"|tr "\n" "\t")
+		pub_key_pem=$(choice "From whom is this message?: " "$dests")
+		read -p "Type the message: " msg
+		#if [[ "$resp" != "" ]]; then # XXX verificar si neceisto esto
+			base64 -d <<< $msg | openssl pkeyutl -verifyrecover -pubin -inkey $pub_key_pem
+		#fi
 	fi
 }
 
@@ -175,10 +189,14 @@ verify_msg () {
 
 show_key () {
 	if [[ -f "contacts/myself.pem" ]]; then
-		cat contacts/myself.pem
-		echo
-		echo Press any key to continue
-		read -sn1
+		if [[ "$ENV" == "gtk" ]]; then
+			cat contacts/myself.pem | zenity --text-info --width=800 --height=600 --title='SHHH: Your public key (share it)'
+		else
+			cat contacts/myself.pem
+			echo
+			echo Press any key to continue
+			read -sn1
+		fi
 	else
 		echo "Your key is not present"
 	fi
@@ -186,19 +204,32 @@ show_key () {
 
 
 config () {
-	read -sn1 -p "Your new keys are about to be created. Press C to continue or any other key to cancel" ans
-	echo
-	if [[ "${ans^^}" == "C" ]]; then
-		if [[ -f shhh.private.pem ]]; then
-			echo "This action will overwite your personal keys."
-			read -n1 -p "Are you sure you want to continue? (y/N): " ans
-			echo
+	if [[ "$ENV" == "gtk" ]]; then
+		zenity --question --text="Your new keys are about to be created. \nThis action will overwrite any previous key created"
+		if [[ "$?" == "0" ]]; then
+			keysize=$(zenity --scale --value=16384 --min-value=1024 --max-value=16384 --step=1024 --width=600 --title="Key size" --text="the bigger the slower to create, but better")
+			passPhrase=$(zenity --password --title="SSH: Type your passphrase to protext your key" --width=600)
+			openssl genpkey -algorithm RSA -out shhh.privada.pem -aes256 -pass "pass:${passPhrase}" -pkeyopt rsa_keygen_bits:$keysize | \
+				zenity --progress --pulsate --no-cancel --text="Creating your key"
+			openssl rsa -passin "pass:${passPhrase}" -in shhh.private.pem -pubout -out ./contacts/myself.pem | \
+				zenity --progress --pulsate --no-cancel --text="Extracting your public key"
+			zenity --info --text="Your new key has been created"
 		fi
-		if [[ "${ans^^}" == "Y" || ! -f shhh.private.pem ]]; then
-			echo Creating private key
-			openssl genpkey -algorithm RSA -out shhh.private.pem -aes256 -pkeyopt rsa_keygen_bits:16384
-			echo Creating public key
-			openssl rsa -in shhh.private.pem -pubout -out ./contacts/myself.pem
+	else
+		read -sn1 -p "Your new keys are about to be created. Press C to continue or any other key to cancel" ans
+		echo
+		if [[ "${ans^^}" == "C" ]]; then
+			if [[ -f shhh.private.pem ]]; then
+				echo "This action will overwite your personal keys."
+				read -n1 -p "Are you sure you want to continue? (y/N): " ans
+				echo
+			fi
+			if [[ "${ans^^}" == "Y" || ! -f shhh.private.pem ]]; then
+				echo Creating private key
+				openssl genpkey -algorithm RSA -out shhh.private.pem -aes256 -pkeyopt rsa_keygen_bits:16384
+				echo Creating public key
+				openssl rsa -in shhh.private.pem -pubout -out ./contacts/myself.pem
+			fi
 		fi
 	fi
 }
