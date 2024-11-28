@@ -45,14 +45,15 @@ menu () {
 		"Write a message and sign it with my Private key"
 		"Read a signed message with another person's Public key"
 		"Display your public key"
+		"Import another person's public key"
 		"Create key pair"
 		"Exit"
 	)
 	if [[ "$ENV" == "gtk" ]]; then
-		resp=$(zenity --title="SHHH" --list --width=700 --height=350 --column=Menu \
-			"${options[0]}" "${options[1]}" "${options[2]}" "${options[3]}" "${options[4]}" "${options[5]}" "${options[6]}")
+		resp=$(zenity --title="SHHH" --list --width=700 --height=400 --column=Menu \
+			"${options[0]}" "${options[1]}" "${options[2]}" "${options[3]}" "${options[4]}" "${options[5]}" "${options[6]}" "${options[7]}")
 	else
-		resp=$(choice "Choose: " "${options[0]}	${options[1]}	${options[2]}	${options[3]}	${options[4]}	${options[5]}	${options[6]}")
+		resp=$(choice "Choose: " "${options[0]}	${options[1]}	${options[2]}	${options[3]}	${options[4]}	${options[5]}	${options[6]}"	"${options[7]}")
 	fi
 	if [[ "$resp" == "${options[0]}" ]]; then
 		write_msg
@@ -70,9 +71,12 @@ menu () {
 		show_key
 	fi
 	if [[ "$resp" == "${options[5]}" ]]; then
-		config
+		import_key
 	fi
 	if [[ "$resp" == "${options[6]}" ]]; then
+		config
+	fi
+	if [[ "$resp" == "${options[7]}" ]]; then
 		toExit=1
 	fi
 }
@@ -176,6 +180,20 @@ verify_msg () {
 		#if [[ "$resp" != "" ]]; then # XXX verificar si neceisto esto
 			base64 -d <<< $msg | openssl pkeyutl -verifyrecover -pubin -inkey $pub_key_pem
 		#fi
+	fi
+}
+
+
+
+import_key () {
+	if [[ "$ENV" == "gtk" ]]; then
+		local person=$(zenity --entry --title="SHHH" --text="Person's name" | sed -e "s/[^a-zA-Z0-9]/_/g")
+		# TODO: verify duplicated filenames
+		local pubkey=$(zenity --text-info --width=500 --height=500 --editable --title='SHHH: Type/paste the public key')
+		echo "$pubkey">${DIR}/contacts/${person}.pem
+		zenity --info --text="Public key successfully imported"
+	else
+		echo TODO
 	fi
 }
 
