@@ -3,10 +3,10 @@
 #requisites:
 if [[ "$1" == "-t" ]]; then
 	ENV="terminal"
-	req='openssl'
+	req='openssl grep sed find base64'
 else
 	ENV="gtk"
-	req='openssl zenity'
+	req='openssl zenity grep sed find base64'
 fi
 
 for r in $req; do
@@ -115,7 +115,7 @@ read_msg () {
 			read -p "Type the encrypted message: " fullMsg
 		fi
 		encodedPassword=$(grep -Eo "^[^:]+" <<<$fullMsg)
-		encodedMsg=$(sed -E "s/^[^:]+://g" <<< $fullMsg)
+		encodedMsg=$(sed -E "s/^[^:]*://g" <<< $fullMsg)
 		if [[ "$ENV" == "gtk" ]]; then
 			passPhrase=$(zenity --password --title="SSH: Type your passphrase" --width=600)
 			password=$(base64 -d <<< $encodedPassword | openssl pkeyutl -decrypt -passin "pass:$passPhrase" -inkey shhh.private.pem )
