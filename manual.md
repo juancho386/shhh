@@ -47,7 +47,7 @@ In the next step you can write the message. It can be as long as you want (or as
 Once the message is encrypted, you will see it displayed. You can press CTRL+a to select the entire text, and then CTRL+c to copy it. Now you can paste it in any message system like Telegram or email.
 
 ## Decrypt messages
-Select 'Read a message encrypted with my Public key' from the menu and paste the encrypted message in the next dialog box.
+Select *Read a message encrypted with my Public key* from the menu and paste the encrypted message in the next dialog box.
 
 > [!TIP]
 > If you are using the keyboard, and you want to move to the OK button, know that TAB will write a tab space in the text. Use CTRL+tab to navigate in that dialog.
