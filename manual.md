@@ -58,5 +58,8 @@ Then you can type your personal passphrase. The next dialog will show you the or
 TODO
 ## Verify signed messages
 TODO
+## Terminal
+TODO
 ## Technical concepts
 TODO
+
