@@ -25,7 +25,7 @@ The creation process could take few minutes. Be patiente. Once it is created, yo
 - `./shhh.privada.pem` which is your private key, and
 - `./contacts/myself.pem` which is the public part of your private key (AKA: public key)
 
-Use the 'Display your public key' item from the menu to copy it and paste it anywhere.
+Use the *Display your public key* item from the menu to copy it and paste it anywhere.
 
 > [!IMPORTANT]
 > Distribute your *public key* (the `myself.pem` file) anywhere. Between friends, but also with people that are not necesarily friends but might want to communicate with you in a secure way.
@@ -38,7 +38,7 @@ Once you have crystal clear the concepts and your keys are created, you can send
 - Sign messages: To send a message that other people needs to know that comes specifically from you
 
 ## Encrypt messages
-An encrypted message can be read only be the person who is intended to. Therefore to write it you need that person's public key. Select 'Write a message and encrypt it with another person's Public key' from the menu to do so.
+An encrypted message can be read only be the person who is intended to. Therefore to write it you need that person's public key. Select *Write a message and encrypt it with another person's Public key* from the menu to do so.
 
 Then you will have a list of available public keys located in your ./contacts directory. Select the destinatary and press OK.
 
@@ -52,8 +52,11 @@ Select 'Read a message encrypted with my Public key' from the menu and paste the
 > [!TIP]
 > If you are using the keyboard, and you want to move to the OK button, know that TAB will write a tab space in the text. Use CTRL+tab to navigate in that dialog.
 
-Then you can type your personal passphrase. The next dialog will show you the original message.
+Then you can type your personal passphrase. The next dialog will show you the original decrypted message.
 
 ## Sign messages
-
-
+TODO
+## Verify signed messages
+TODO
+## Technical concepts
+TODO
