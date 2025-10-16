@@ -1,0 +1,35 @@
+#!/bin/bash
+action=$1
+if [[ "$action" != "to" && "$action" != "read" ]]; then
+  echo Error
+  echo Usage:
+  echo "  $0 to \"github_user\" \"message\""
+  echo "  $0 read \"private_key_filename\" \"encrypted message\""
+  exit 1
+fi
+
+if [[ "$action" == "to" ]]; then
+  user=$2
+  msg=$3
+  msg_file=$(mktemp ./MSG_XXXXX)
+  trap "rm $msg_file" EXIT
+  echo "${msg}" > $msg_file
+
+  curl -s https://github.com/${user}.keys \
+    | ssh-keygen -e -m PEM -f /dev/stdin \
+    | openssl pkeyutl -encrypt -pubin -inkey /dev/stdin -in ${msg_file} -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
+    | base64
+fi
+
+if [[ "$action" == "read" ]]; then
+  key=$2
+  msg=$3
+  key_file=$(mktemp ./MSG_XXXXX)
+  msg_file=$(mktemp ./MSG_XXXXX)
+  trap "rm $msg_file $key_file" EXIT
+
+  openssl pkey -in ${HOME}/.ssh/${key} -out ./${key_file}
+  base64 -d <<< "${msg}" \
+    | openssl pkeyutl -decrypt -inkey ./${key_file} -in /dev/stdin -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256
+fi
+
