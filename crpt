@@ -5,7 +5,7 @@ mkdir $dir >/dev/null 2>&1
 cd $dir
 [[ ! -f mikey.private.pem ]] && echo "Creating your PRIVATE key..." && openssl genpkey -algorithm RSA -out mikey.private.pem -aes256 -pkeyopt rsa_keygen_bits:16384
 [[ ! -f mikey.public.pem ]]  && echo "Creating your PUBLIC key..."  && openssl rsa -in mikey.private.pem -pubout -out mikey.public.pem
-keys=$(find . -name "*.pem")
+keys=$(find . -name "*.pem" | grep -v "mikey.private.pem")
 popd >/dev/null
 
 if [[ "$1" == "" ]]; then
