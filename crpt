@@ -1,0 +1,54 @@
+#!/bin/bash
+dir=".enc_message"
+pushd ${HOME} >/dev/null 2>&1
+mkdir $dir >/dev/null 2>&1
+cd $dir
+[[ ! -f mikey.private.pem ]] && echo "Creating your PRIVATE key..." && openssl genpkey -algorithm RSA -out mikey.private.pem -aes256 -pkeyopt rsa_keygen_bits:16384
+[[ ! -f mikey.public.pem ]]  && echo "Creating your PUBLIC key..."  && openssl rsa -in mikey.private.pem -pubout -out mikey.public.pem
+keys=$(find . -name "*.pem")
+popd >/dev/null
+
+if [[ "$1" == "" ]]; then
+	echo "How to use it:"
+	echo
+	echo "Encrypt:"
+	echo "  $0 -e <plain text file>"
+	echo
+	echo "Decrypt:"
+	echo "  $0 -d <encrypted file>"
+	echo
+	exit 0
+fi
+
+if [[ ! -f "$2" ]]; then
+	echo "Error: File not found"
+	exit 1
+fi
+
+if [[ "$1" == "-e" ]]; then # Encript
+	select pub_key_pem in $keys; do break; done
+	msg=$(cat "$2")
+	password=$(openssl rand 256|tr -d '\000\a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z"')
+	encriptedMsg=$(openssl enc -e -chacha20 -pbkdf2 -pass "pass:${password}" <<<${msg}|base64 -w0)
+	encryptedPassword=$(openssl pkeyutl -encrypt -pubin -inkey "${HOME}/${dir}/${pub_key_pem}" <<< "$password"|base64 -w0)
+	outfile="$2.encrypted"
+	echo "${encryptedPassword}:${encriptedMsg}" >${outfile}
+	echo "${outfile} created"
+	exit 0
+fi
+
+if [[ "$1" == "-d" ]]; then # Decrypt
+	fullMsg=$(cat "$2")
+	encodedPassword=$(grep -Eo "^[^:]+" <<<$fullMsg)
+	encodedMsg=$(sed -E "s/^[^:]*://g" <<< $fullMsg)
+	password=$(base64 -d <<< $encodedPassword | openssl pkeyutl -decrypt -inkey "${HOME}/${dir}/mikey.private.pem" )
+	msg=$(base64 -d <<< $encodedMsg | openssl enc -d -chacha20 -pbkdf2 -pass "pass:${password}")
+	outfile="$2.decrypted"
+	echo "${msg}" >${outfile}
+	echo "${outfile} created"
+	exit 0
+fi
+
+echo "Error"
+exit 2
+
